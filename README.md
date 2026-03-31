@@ -28,7 +28,7 @@ OPENROUTER_API_KEY=...
 # Optional OpenRouter metadata/custom endpoint
 OPENROUTER_API_BASE=https://openrouter.ai/api/v1
 OR_SITE_URL=...
-OR_APP_NAME=HyperAgents
+OR_APP_NAME=my-hyperagents-run
 ```
 
 ```bash

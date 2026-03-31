@@ -106,7 +106,7 @@ def process_entry(entry, out_dname, model_name_or_path, model_patch_paths, root_
             "ANTHROPIC_API_KEY": os.getenv('ANTHROPIC_API_KEY'),
             "OPENAI_API_KEY": os.getenv('OPENAI_API_KEY'),
             "OPENROUTER_API_KEY": os.getenv('OPENROUTER_API_KEY'),
-            "OPENROUTER_API_BASE": os.getenv('OPENROUTER_API_BASE'),
+            "OPENROUTER_API_BASE": os.getenv('OPENROUTER_API_BASE', 'https://openrouter.ai/api/v1'),
             "OR_SITE_URL": os.getenv('OR_SITE_URL'),
             "OR_APP_NAME": os.getenv('OR_APP_NAME'),
             "METAGEN_ACCESS_TOKEN": os.getenv('METAGEN_ACCESS_TOKEN'),
