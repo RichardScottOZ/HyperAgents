@@ -25,12 +25,13 @@ from domains.polyglot.utils import (
     safe_log,
     setup_logger,
 )
+from agent.llm import OPENAI_O3MINI_MODEL
 
 
 def get_eval_script(commands):
     return "\n".join(["#!/bin/bash", "set -uxo pipefail"] + commands) + "\n"
 
-def process_entry(entry, out_dname, model_name_or_path, model_patch_paths, root_dir):
+def process_entry(entry, out_dname, model_name_or_path, model_patch_paths, root_dir, agent_model):
     """
     Process a single dataset entry. This function encapsulates the main processing logic
     for each entry to make it suitable for parallel execution.
@@ -104,6 +105,10 @@ def process_entry(entry, out_dname, model_name_or_path, model_patch_paths, root_
         env_vars = {
             "ANTHROPIC_API_KEY": os.getenv('ANTHROPIC_API_KEY'),
             "OPENAI_API_KEY": os.getenv('OPENAI_API_KEY'),
+            "OPENROUTER_API_KEY": os.getenv('OPENROUTER_API_KEY'),
+            "OPENROUTER_API_BASE": os.getenv('OPENROUTER_API_BASE'),
+            "OR_SITE_URL": os.getenv('OR_SITE_URL'),
+            "OR_APP_NAME": os.getenv('OR_APP_NAME'),
             "METAGEN_ACCESS_TOKEN": os.getenv('METAGEN_ACCESS_TOKEN'),
         }
         safe_log("Running the agent")
@@ -117,7 +122,7 @@ def process_entry(entry, out_dname, model_name_or_path, model_patch_paths, root_
             "--outdir", f"/{REPO_NAME}/",
             "--test_description", test_description,
             "--language", entry['language'],
-            "--model", "o3-mini",
+            "--model", agent_model,
         ]
         exec_result = container.exec_run(cmd, environment=env_vars, workdir='/testbed/')
         log_container_output(exec_result)
@@ -245,6 +250,7 @@ def harness(
         pred_dname='./outputs',
         output_dir='./outputs',
         root_dir=None,
+        agent_model=OPENAI_O3MINI_MODEL,
     ):
     """
     Parallel processing harness using ThreadPoolExecutor.
@@ -256,6 +262,7 @@ def harness(
         model_name_or_path: Model name or path
         model_patch_paths: Paths to the model patches for dgm
         num_evals: Repeated number of swe evaluations
+        agent_model: Model used by the task agent inside the evaluation container
     """
     if model_patch_paths:
         for model_patch_path in model_patch_paths:
@@ -308,7 +315,15 @@ def harness(
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Submit all tasks
             future_to_entry = {
-                executor.submit(process_entry, entry, out_dname, model_name_or_path_inst, model_patch_paths, root_dir): entry
+                executor.submit(
+                    process_entry,
+                    entry,
+                    out_dname,
+                    model_name_or_path_inst,
+                    model_patch_paths,
+                    root_dir,
+                    agent_model,
+                ): entry
                 for entry in entries
             }
             
@@ -394,6 +409,12 @@ def main():
     parser.add_argument("--num_evals_parallel", type=int, default=1, help="Number of parallel repeated evaluations")
     parser.add_argument("--output_dir", type=str, default="./outputs", help="Output directory")
     parser.add_argument("--subset", type=str, default="small", help="Dataset subset")
+    parser.add_argument(
+        "--agent_model",
+        type=str,
+        default=OPENAI_O3MINI_MODEL,
+        help="LLM model to use inside the task agent, for example openrouter/openai/gpt-4o-mini",
+    )
     args = parser.parse_args()
 
     if args.subset == "small":
@@ -421,6 +442,7 @@ def main():
         num_evals_parallel=args.num_evals_parallel,
         pred_dname=args.output_dir,
         output_dir=args.output_dir,
+        agent_model=args.agent_model,
     )
 
 if __name__ == "__main__":
