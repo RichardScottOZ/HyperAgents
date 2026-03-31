@@ -24,6 +24,11 @@
 OPENAI_API_KEY=...
 ANTHROPIC_API_KEY=...
 GEMINI_API_KEY=...
+OPENROUTER_API_KEY=...
+# Optional OpenRouter metadata/custom endpoint
+OPENROUTER_API_BASE=https://openrouter.ai/api/v1
+OR_SITE_URL=...
+OR_APP_NAME=my-hyperagents-run
 ```
 
 ```bash
@@ -52,6 +57,17 @@ bash ./setup_initial.sh
 ```bash
 # See the script for args, and baseline selections
 python generate_loop.py --domains <domain>
+
+# Example: run the task agent through OpenRouter
+python run_task_agent.py \
+  --problem_statement "..." \
+  --git_dir /path/to/repo \
+  --base_commit <commit> \
+  --chat_history_file /tmp/chat.md \
+  --model openrouter/openai/gpt-4o-mini
+
+# Example: run polyglot evaluations with an OpenRouter model
+python generate_loop.py --domains polyglot --agent_model openrouter/openai/gpt-4o-mini
 ```
 
 By default, outputs will be saved in `outputs/` directory.
@@ -91,4 +107,3 @@ If you find this project useful, please consider citing:
       url={https://arxiv.org/abs/2603.19461}, 
 }
 ```
-

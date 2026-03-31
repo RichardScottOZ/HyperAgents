@@ -44,9 +44,10 @@ from utils.gl_utils import (
     is_starting_node,
     process_meta_patch_files,
 )
+from agent.llm import OPENAI_O3MINI_MODEL
 
 
-def run_harness_polyglot(root_dir, output_dir, genid, skip_staged_eval=False, num_samples=-1):
+def run_harness_polyglot(root_dir, output_dir, genid, skip_staged_eval=False, num_samples=-1, agent_model=OPENAI_O3MINI_MODEL):
     # NOTE: the harness for polyglot is different because each task instance needs a docker container
     from domains.polyglot.harness import harness as harness_polyglot
     from domains.polyglot.report import report as report_polyglot
@@ -71,6 +72,7 @@ def run_harness_polyglot(root_dir, output_dir, genid, skip_staged_eval=False, nu
             pred_dname=eval_output_dir,
             output_dir=eval_output_dir,
             root_dir=root_dir,
+            agent_model=agent_model,
         )
         report_polyglot(output_dir=eval_output_dir, run_keyword=model_name_or_path, expected_num_tasks=len(test_task_list))
         stagedeval_score = get_score("polyglot", output_dir, genid)
@@ -90,6 +92,7 @@ def run_harness_polyglot(root_dir, output_dir, genid, skip_staged_eval=False, nu
             pred_dname=eval_output_dir,
             output_dir=eval_output_dir,
             root_dir=root_dir,
+            agent_model=agent_model,
         )
         report_polyglot(output_dir=eval_output_dir, run_keyword=model_name_or_path, expected_num_tasks=len(test_task_list + test_task_list_more))
 
@@ -736,6 +739,7 @@ def generate_loop(
     eval_test=False,
     skip_staged_eval=False,
     edit_select_parent=False,
+    agent_model=OPENAI_O3MINI_MODEL,
 ):
     # Initialization
     docker_client = docker.DockerClient()
@@ -844,7 +848,14 @@ def generate_loop(
             print(f"generate_loop: generation 0 completed, parent None")
             # Evaluate the agent on polyglot if needed
             if "polyglot" in domains:
-                run_harness_polyglot(root_dir, output_dir, 0, skip_staged_eval=skip_staged_eval, num_samples=eval_samples[domains.index("polyglot")])
+                run_harness_polyglot(
+                    root_dir,
+                    output_dir,
+                    0,
+                    skip_staged_eval=skip_staged_eval,
+                    num_samples=eval_samples[domains.index("polyglot")],
+                    agent_model=agent_model,
+                )
 
         # Evaluate the entire archive as an ensemble
         eval_ensemble = (
@@ -930,7 +941,14 @@ def generate_loop(
 
         # Evaluate the agent on polyglot if needed
         if "polyglot" in domains:
-            run_harness_polyglot(root_dir, output_dir, current_genid, skip_staged_eval=skip_staged_eval, num_samples=eval_samples[domains.index("polyglot")])
+            run_harness_polyglot(
+                root_dir,
+                output_dir,
+                current_genid,
+                skip_staged_eval=skip_staged_eval,
+                num_samples=eval_samples[domains.index("polyglot")],
+                agent_model=agent_model,
+            )
 
         # Evaluate the entire archive as an ensemble
         eval_ensemble = (
@@ -1151,6 +1169,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Whether to allow the agent to edit the selection mechanism",
     )
+    parser.add_argument(
+        "--agent_model",
+        type=str,
+        default=OPENAI_O3MINI_MODEL,
+        help="LLM model to use for task-agent runs, for example openrouter/openai/gpt-4o-mini",
+    )
     args = parser.parse_args()
 
     # Post-parse validation
@@ -1186,4 +1210,5 @@ if __name__ == "__main__":
         eval_test=args.eval_test,
         skip_staged_eval=args.skip_staged_eval,
         edit_select_parent=args.edit_select_parent,
+        agent_model=args.agent_model,
     )

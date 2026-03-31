@@ -24,8 +24,53 @@ OPENAI_GPT5MINI_MODEL = "openai/gpt-5-mini"
 GEMINI_3_MODEL = "gemini/gemini-3-pro-preview"
 GEMINI_MODEL = "gemini/gemini-2.5-pro"
 GEMINI_FLASH_MODEL = "gemini/gemini-2.5-flash"
+OPENROUTER_GPT4O_MINI_MODEL = "openrouter/openai/gpt-4o-mini"
+
+MODEL_ALIASES = {
+    "claude-sonnet-4-5": CLAUDE_MODEL,
+    "claude-3-haiku": CLAUDE_HAIKU_MODEL,
+    "claude-3-5-sonnet": CLAUDE_35NEW_MODEL,
+    "gpt-4o": OPENAI_MODEL,
+    "gpt-4o-mini": OPENAI_MINI_MODEL,
+    "o3": OPENAI_O3_MODEL,
+    "o3-mini": OPENAI_O3MINI_MODEL,
+    "o4-mini": OPENAI_O4MINI_MODEL,
+    "gpt-5.2": OPENAI_GPT52_MODEL,
+    "gpt-5": OPENAI_GPT5_MODEL,
+    "gpt-5-mini": OPENAI_GPT5MINI_MODEL,
+    "gemini-3-pro-preview": GEMINI_3_MODEL,
+    "gemini-2.5-pro": GEMINI_MODEL,
+    "gemini-2.5-flash": GEMINI_FLASH_MODEL,
+}
+
+OPENAI_RESPONSES_API_MODELS = {
+    OPENAI_GPT52_MODEL,
+    OPENAI_GPT5_MODEL,
+    OPENAI_GPT5MINI_MODEL,
+}
+
+OPENAI_FIXED_TEMPERATURE_MODELS = {
+    OPENAI_GPT5_MODEL,
+    OPENAI_GPT5MINI_MODEL,
+}
 
 litellm.drop_params=True
+
+
+def normalize_model_name(model: str) -> str:
+    """
+    Resolve short model aliases to the fully qualified LiteLLM model name.
+
+    Args:
+        model: User-provided model identifier.
+
+    Returns:
+        The canonical model string passed to LiteLLM.
+    """
+    model = model.strip()
+    if model in MODEL_ALIASES:
+        return MODEL_ALIASES[model]
+    return model
 
 @backoff.on_exception(
     backoff.expo,
@@ -42,6 +87,7 @@ def get_response_from_llm(
 ) -> Tuple[str, list, dict]:
     if msg_history is None:
         msg_history = []
+    model = normalize_model_name(model)
 
     # Convert text to content, compatible with LITELLM API
     msg_history = [
@@ -59,13 +105,13 @@ def get_response_from_llm(
 
     # GPT-5 and GPT-5-mini only support default temperature (1), skip it
     # GPT-5.2 supports temperature
-    if model in ["openai/gpt-5", "openai/gpt-5-mini"]:
+    if model in OPENAI_FIXED_TEMPERATURE_MODELS:
         pass  # Don't set temperature
     else:
         completion_kwargs["temperature"] = temperature
 
-    # GPT-5 models require max_completion_tokens instead of max_tokens
-    if "gpt-5" in model:
+    # OpenAI GPT-5-family models use max_completion_tokens, even when they still accept temperature.
+    if model in OPENAI_RESPONSES_API_MODELS:
         completion_kwargs["max_completion_tokens"] = max_tokens
     else:
         # Claude Haiku has a 4096 token limit
@@ -104,6 +150,7 @@ if __name__ == "__main__":
         ("GEMINI_3_MODEL", GEMINI_3_MODEL),
         ("GEMINI_MODEL", GEMINI_MODEL),
         ("GEMINI_FLASH_MODEL", GEMINI_FLASH_MODEL),
+        ("OPENROUTER_GPT4O_MINI_MODEL", OPENROUTER_GPT4O_MINI_MODEL),
     ]
     for name, model in models:
         print(f"\n{'='*50}")
